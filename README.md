@@ -41,23 +41,35 @@ res = fbagent.run(agentknit.create_client(schema), model, task, budget=200)
 res.final_reply, res.steps   # per step: prompt/cached tokens of both calls, digest
 ```
 
-Tools are agentknit's defaults (`read_file`, `write_file`, `str_replace`, `exec_shell`),
-dispatched with `agentknit.dispatch`.
+## Implementation
+
+The whole agent is one agentknit `step_reducer` (`fbagent/_loop.py`): agentknit's
+`run_turn` drives the loop (tools, hooks, journal, events, sandbox executor), and after
+every tool step the reducer calls `side_query(..., max_tokens=B, preamble=None,
+count_usage=True)` for the digest and returns a `StepReduction` holding the digest
+(with `final_reply=` set when the digest says `DONE:`). Tools are agentknit's defaults
+(`read_file`, `write_file`, `str_replace`, `exec_shell`) or those of the loaded spec.
 
 ## End-to-end results (B = 120)
 
 Task: create fib.py printing 15 Fibonacci numbers, run it, write test_fib.py, run pytest, report.
+The prefix is larger than a bare loop's because it includes agentknit's system prompt.
 
-Claude Sonnet 5, 3 steps, ✅ correct (377, 2 passed):
-- step 1 write×2: act prompt 1252 (cached 0), summary prompt 1885 (cached 1250)
-- step 2 read×2: act prompt 1389 (cached 1250), summary prompt 1972 (cached 1387)
-- step 3 shell: act prompt 1508 (cached 1387), summary prompt 2422 (cached 1506) → DONE
+Claude Sonnet 5, 5 steps, ✅ correct (377, 3 passed):
+- step 1 write×2: act prompt 3528 (cached 0), summary prompt 4354 (cached 3526)
+- step 2 shell: act prompt 3649 (cached 3526), summary prompt 4430 (cached 3647)
+- step 3 shell: act prompt 3768 (cached 3647), summary prompt 4549 (cached 3766)
+- step 4 shell: act prompt 3858 (cached 3766), summary prompt 4639 (cached 3856)
+- step 5 shell: act prompt 3954 (cached 3856), summary prompt 5363 (cached 3952) → DONE
 
-Claude Haiku 4.5, 4 steps, ✅ correct (377, 7 passed). Act prompts 1183 → 1325 → 1452 → 1594.
+Every summary call hits the cache for its act call's whole prefix (minus 2 tokens), and
+every act call hits the cache written by the previous summary call.
+
+Claude Haiku 4.5, 4 steps, ✅ correct (377, 4 passed). Act prompts 2713 → 2774 → 2882 → 2972.
 It shows no cached tokens because Haiku caches nothing below 4096 prompt tokens.
 
-Context grows by 119–142 tokens per step (= B + ~15 overhead), while raw steps were
-550–1950 chars and are never seen again.
+Context grows by 60–140 tokens per step (≤ B + ~20 overhead), while raw steps were
+465–2425 chars and are never seen again.
 
 ## Lessons from the runs
 
@@ -69,6 +81,8 @@ Context grows by 119–142 tokens per step (= B + ~15 overhead), while raw steps
   steps really happened, and the user message says "Step executed and recorded".
 - 🛑 Weak models re-verify forever after finishing, so the loop trusts `DONE:` in the digest.
 - 📤 agentknit's `exec_shell` echoes to stdout, so `--json` moves it to stderr.
+- ⏱️ Haiku copied agentknit's `<session_time>` preamble into its answer, so fbagent
+  turns time awareness off.
 
 ## Development
 

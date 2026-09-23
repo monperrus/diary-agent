@@ -13,14 +13,14 @@ from ._loop import run
 
 
 def _print_event(kind: str, data: dict[str, Any]) -> None:
-    if kind == "tool_call":
-        print(f"🔧 [{data['step']}] {data['name']} {data['args'][:120]}", file=sys.stderr)
-    elif kind == "step":
+    if kind == "fb_step":
         print(f"🧠 [{data['step']}] act prompt={data['act_prompt_tokens']} "
               f"cached={data['act_cached_tokens']} | summary prompt={data['summary_prompt_tokens']} "
               f"cached={data['summary_cached_tokens']} | raw={data['raw_step_chars']}ch "
               f"→ digest={data['digest_tokens']}tok", file=sys.stderr)
         print(f"   {data['digest']}", file=sys.stderr)
+    elif kind not in ("fb_final", "final_answer"):
+        agentknit._default_event_handler(kind, data)
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -39,7 +39,8 @@ def main(argv: list[str] | None = None) -> None:
     schema = agentknit.load_specification(args.model, args.endpoint)
     client = agentknit.create_client(schema)
     res = run(client, schema.get("model", args.model), args.task, budget=args.budget,
-              max_steps=args.max_steps, on_event=None if args.json else _print_event)
+              max_steps=args.max_steps, schema=schema,
+              on_event=None if args.json else _print_event)
     if args.json:
         json.dump({"final_reply": res.final_reply,
                    "final_prompt_tokens": res.final_prompt_tokens,
