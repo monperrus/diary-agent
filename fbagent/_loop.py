@@ -20,7 +20,7 @@ from agentknit import StepReduction
 SYSTEM_PROMPT = """\
 Your memory works in steps: after every step, the raw tool calls and tool
 outputs are discarded and replaced by a digest of at most {budget} tokens that
-you write yourself. Past steps appear as "[step N] ..." assistant messages:
+you write yourself. Past steps appear as "[memory of your step N]" messages:
 those actions really happened, their effects are on disk, never redo them.
 File contents you read do not survive the step, so prefer write_file over
 str_replace for edits. Batch independent tool calls into one step.
@@ -34,7 +34,11 @@ what future steps need: what you did, key facts learned (exact values, errors,
 command outputs that matter; relative paths), and what remains. If the task is
 finished, end with "DONE: <final answer>". No preamble, do not call tools."""
 
-CONTINUE_PROMPT = "Step executed and recorded. Do the next remaining action."
+MEMORY_TEMPLATE = """\
+[memory of your step {step}, already executed — its effects are on disk]
+{digest}
+
+Do the next remaining action with a tool call, or give the final answer."""
 
 DONE_MARKER = "DONE:"
 
@@ -111,8 +115,9 @@ def run(client: Any, model: str, task: str, *, budget: int = 200,
             digest=digest)
         result.steps.append(rec)
         emit("fb_step", dict(rec.__dict__))
-        kept = [{"role": "assistant", "content": f"[step {n}] {digest}"},
-                {"role": "user", "content": CONTINUE_PROMPT}]
+        # User role, not assistant: models imitate their own past messages and
+        # would reply with a digest instead of acting.
+        kept = [{"role": "user", "content": MEMORY_TEMPLATE.format(step=n, digest=digest)}]
         # The digest is the model's own judgement of the step: trust its DONE,
         # weaker models otherwise keep re-verifying forever.
         if DONE_MARKER in digest:

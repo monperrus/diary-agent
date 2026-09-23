@@ -63,9 +63,12 @@ def test_only_digests_enter_context() -> None:
         assert m["role"] in ("system", "user", "assistant")
         assert "tool_calls" not in m
         assert "xxxxx" not in json.dumps(m)
-    digests = [m["content"] for m in res.messages
-               if str(m.get("content")).startswith("[step")]
-    assert digests == ["[step 1] digest", "[step 2] digest", "[step 3] digest"]
+    memories = [m for m in res.messages if str(m.get("content")).startswith("[memory")]
+    assert [m["role"] for m in memories] == ["user"] * 3
+    assert [m["content"].splitlines()[:2] for m in memories] == [
+        [f"[memory of your step {i}, already executed — its effects are on disk]", "digest"]
+        for i in (1, 2, 3)]
+    assert not [m for m in res.messages[2:-1] if m["role"] == "assistant"]
 
 
 def test_context_grows_linearly() -> None:
