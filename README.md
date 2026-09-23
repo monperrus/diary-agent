@@ -1,13 +1,14 @@
-# The Fixed-Budget Agent
+# The Diary Agent
 
-A coding-agent concept car: **the context grows by at most B tokens per step**,
-whatever the tools return.
+A coding-agent concept car: after each step, the agent writes a short diary
+entry, and the diary is all it remembers. **The context grows by at most B
+tokens per step**, whatever the tools return.
 
 In a normal agent loop, every tool call and every tool output (a whole file, a
 test log, a directory listing) is appended to the conversation forever. Here,
-at the end of each step, the model itself summarizes what just happened into a
-digest of at most B tokens, and **only the digest** is appended. The raw step
-is thrown away. After k steps the context is `prefix + k·(B + c)` tokens: linear
+at the end of each step, the model itself writes a diary entry of at most B
+tokens about what just happened, and **only that entry** is appended. The raw
+step is thrown away. After k steps the context is `prefix + k·(B + c)` tokens: linear
 in the number of steps, with coefficient B.
 
 The summarization reuses the prompt cache. The summarize request starts with
@@ -37,12 +38,12 @@ agentknit `step_reducer` (see `fbagent/_loop.py`):
   `final_reply`, which ends the run.
 
 `step_reducer` and the `side_query` options were added to agentknit for this
-concept car.
+concept car. The Python package and CLI are called `fbagent` (fixed budget).
 
 ## Usage
 
 ```
-pip install git+https://github.com/monperrus/fixed-budget-agent
+pip install git+https://github.com/monperrus/diary-agent
 fbagent "fix the failing test in tests/" --endpoint https://openrouter.ai/api/v1 \
     --model qwen/qwen3-coder --budget 200
 fbagent TASK --endpoint run:///path/to/completions-shim --model M --json

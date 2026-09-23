@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "fbagent"
 version = "0.1.0"
-description = "Coding agent whose context grows by a fixed token budget per step (built on agentknit)"
+description = "The Diary Agent: a coding agent that only remembers a short diary entry per step (built on agentknit)"
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.11"
@@ -14,7 +14,7 @@ authors = [{name = "Martin Monperrus"}]
 dependencies = ["agentknit @ git+https://github.com/monperrus/agentknit"]
 
 [project.urls]
-Homepage = "https://github.com/monperrus/fixed-budget-agent"
+Homepage = "https://github.com/monperrus/diary-agent"
 
 [project.optional-dependencies]
 dev = ["pytest", "pytest-cov", "mypy", "ruff"]
