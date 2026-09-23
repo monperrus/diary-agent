@@ -32,6 +32,8 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--budget", type=int, default=200, help="max digest tokens per step")
     p.add_argument("--max-steps", type=int, default=20)
     p.add_argument("--json", action="store_true", help="print the result as JSON on stdout")
+    p.add_argument("--non-interactive", action="store_true",
+                   help="accepted for agent-harness compatibility (fbagent never prompts)")
     args = p.parse_args(argv)
 
     if args.json:  # exec_shell echoes live to stdout by default
@@ -44,11 +46,16 @@ def main(argv: list[str] | None = None) -> None:
     if args.json:
         json.dump({"final_reply": res.final_reply,
                    "final_prompt_tokens": res.final_prompt_tokens,
+                   "usage_totals": res.usage_totals,
                    "steps": [s.__dict__ for s in res.steps]}, sys.stdout, indent=2)
         print()
     else:
         print(f"\n» {res.final_reply}" if res.final_reply is not None
               else f"⚠️ no final answer after {args.max_steps} steps")
+        u = res.usage_totals
+        print(f"[fbagent] steps={len(res.steps)} final_prompt={res.final_prompt_tokens} "
+              f"prompt={u.get('prompt', 0)} cached={u.get('cached', 0)} "
+              f"completion={u.get('completion', 0)}", file=sys.stderr)
     sys.exit(0 if res.final_reply is not None else 1)
 
 

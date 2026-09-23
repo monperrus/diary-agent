@@ -60,6 +60,7 @@ class Result:
     steps: list[StepRecord] = field(default_factory=list)
     messages: list[dict[str, Any]] = field(default_factory=list)
     final_prompt_tokens: int = 0
+    usage_totals: dict[str, int] = field(default_factory=dict)  # act + digest calls
 
 
 def _default_schema(model: str) -> dict[str, Any]:
@@ -136,6 +137,7 @@ def run(client: Any, model: str, task: str, *, budget: int = 200,
     res = agentknit.run_turn(client, model, session, task)
 
     result.messages = session["messages"]
+    result.usage_totals = dict(session["usage_totals"])
     result.final_prompt_tokens = act_usage[-1].get("prompt", 0) if act_usage else 0
     result.final_reply = None if exhausted else res.final_reply
     emit("fb_final", {"text": result.final_reply, "prompt_tokens": result.final_prompt_tokens})
