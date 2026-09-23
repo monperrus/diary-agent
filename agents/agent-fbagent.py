@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""agent_benchmark entry point for fbagent (fixed token budget per step).
+"""Benchmark-harness entry point for fbagent (fixed token budget per step).
 
     agent-fbagent.py [--model M --endpoint E --budget B] --non-interactive "<task>"
 
-Defaults to Claude Haiku through the local run:// shim.
+Without ``--endpoint``, the model and endpoint come from ``$FBAGENT_MODEL`` and
+``$FBAGENT_ENDPOINT`` (an OpenAI-compatible base URL or a ``run://`` shim).
 """
 
 from __future__ import annotations
@@ -16,7 +17,9 @@ from fbagent.__main__ import main
 if __name__ == "__main__":
     argv = sys.argv[1:]
     if "--endpoint" not in argv:
-        argv = ["--model", "claude-haiku",
-                "--endpoint", f"run://{os.path.expanduser('~')}/bin/claude-haiku-completions.py",
-                *argv]
+        endpoint = os.environ.get("FBAGENT_ENDPOINT")
+        if not endpoint:
+            sys.exit("agent-fbagent: pass --endpoint or set $FBAGENT_ENDPOINT")
+        argv = ["--model", os.environ.get("FBAGENT_MODEL", "default"),
+                "--endpoint", endpoint, *argv]
     main(argv)
